@@ -14,9 +14,9 @@ A terminal-based Python editor with:
 
 1. *Clone this repo:*
   git clone https://github.com/i-amshifa-06/ASP.git
-  cd ASP
+cd ASP
 
-2. *Install dependencies:*
+3. *Install dependencies:*
   pip install -r requirements.txt
 
 ## Usage
