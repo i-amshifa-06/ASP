@@ -4,10 +4,12 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
+AUTHOR_NAME = "Author: Mohiadeen Shifaul Kareem MI"  # <<<--- EDIT THIS TO YOUR NAME
+
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def print_title_half_color(text):
+def print_title_half_color(text, author_name=""):
     fig = Figlet(font='slant')
     rendered = fig.renderText(text)
     lines = rendered.splitlines()
@@ -19,6 +21,8 @@ def print_title_half_color(text):
         for c in line:
             buf += color + c + Style.RESET_ALL if c != " " else " "
         print(buf)
+    if author_name:
+        print(Fore.LIGHTGREEN_EX + Style.DIM + " " * 6 + author_name + Style.RESET_ALL + '\n')
 
 PY_KEYWORDS = [
     'False','None','True','and','as','assert','async','await','break','class','continue','def','del',
@@ -42,7 +46,6 @@ PY_ALIAS = {
     "flase":"False", "treu":"True", "nnoe":"None", "clas":"class", "funtion":"function", "contiune":"continue",
     "retun":"return", "wihle":"while", "exepct":"except", "finall":"finally", "fucntion":"function", "lenght":"length",
     "strnig":"string", "dicti":"dict", "tupel":"tuple", "claas":"class", "prnt":"print", "prit":"print", "prnitf":"print",
-    # Common abbreviation
     "np":"numpy", "nmpy":"numpy", "pd":"pandas", "plt":"matplotlib", "sns":"seaborn", "sp":"scipy", "sk":"sklearn",
     "req":"requests", "bs":"bs4", "tf":"tensorflow", "ss":"sys","is":"os","ps":"os"
 }
@@ -57,14 +60,11 @@ def autocorrect_func_names(line, keywords, alias):
 
 def autocorrect_word(word, words, alias):
     lw = word.lower()
-    if lw in alias:
-        return alias[lw]
-    if word in words or not word.isidentifier() or len(word) < 2:
-        return word
+    if lw in alias: return alias[lw]
+    if word in words or not word.isidentifier() or len(word) < 2: return word
     matches = difflib.get_close_matches(word, words, n=1, cutoff=0.7)
     return matches[0] if matches else word
 
-# --- SYNTAX HIGHLIGHTING ---
 HIGHLIGHT_MAP = {
     "keyword": Fore.BLUE + Style.BRIGHT,
     "builtin": Fore.LIGHTCYAN_EX + Style.BRIGHT,
@@ -167,6 +167,7 @@ getkey = getch()
 
 def render(lines, line_idx, pos):
     clear_screen()
+    # Banner/author are NOT shown here!
     for i, l in enumerate(lines):
         pfx = Fore.MAGENTA+">"+Style.RESET_ALL if i == line_idx else " "
         colored = syntax_highlight(l)
@@ -212,14 +213,15 @@ def insert_pair(char, buf, pos):
     return buf[:pos] + char + close + buf[pos:], pos + 1
 
 def main():
-    print_title_half_color("AutoSyntaxPy")
+    clear_screen()
+    print_title_half_color("AutoSyntaxPy", AUTHOR_NAME)
     act = prompt_action()
     print(Fore.LIGHTWHITE_EX+"Enter file name: "+Style.RESET_ALL, end="")
     filename = input().strip()
     if not filename.endswith('.py'):
         print(Fore.RED+"Only .py files supported."+Style.RESET_ALL); return
     folder = choose_save_folder()
-    clear_screen()
+    clear_screen()  # Clear everything (banner/author gone)
     fullpath = os.path.join(folder, filename)
     if act == "2":
         try:
@@ -242,7 +244,7 @@ def main():
                 with open(fullpath, "w", encoding="utf-8") as fw:
                     for l in lines: fw.write(l + "\n")
                 clear_screen()
-                print(Fore.CYAN+f"Code saved to: {fullpath}"+Style.RESET_ALL)
+                print(Fore.GREEN+f"Code saved to: {fullpath}"+Style.RESET_ALL)
                 sys.exit(0)
             elif ch in ('esc', 'ctrl+c'):
                 clear_screen()
@@ -302,7 +304,6 @@ def main():
             elif (isinstance(ch, str) and len(ch)==1 and ch.isprintable()):
                 lines[cur] = buf[:pos] + ch + buf[pos:]
                 pos += 1
-
     except KeyboardInterrupt:
         clear_screen()
         print(Fore.RED+"\nExited (not saved)"+Style.RESET_ALL)
