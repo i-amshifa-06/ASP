@@ -17,12 +17,12 @@ def print_title_half_color(text, author_name=""):
     mid = nrows // 2
     for i, line in enumerate(lines):
         buf = ""
-        color = Fore.YELLOW if i < mid else Fore.BLUE
+        color = Fore.YELLOW + Style.BRIGHT if i < mid else Fore.BLUE + Style.BRIGHT
         for c in line:
             buf += color + c + Style.RESET_ALL if c != " " else " "
         print(buf)
     if author_name:
-        print(Fore.LIGHTGREEN_EX + Style.DIM + " " * 6 + author_name + Style.RESET_ALL + '\n')
+        print(Fore.LIGHTGREEN_EX + Style.BRIGHT + " " * 6 + author_name + Style.RESET_ALL + '\n')
 
 PY_KEYWORDS = [
     'False','None','True','and','as','assert','async','await','break','class','continue','def','del',
