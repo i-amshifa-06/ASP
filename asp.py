@@ -4,7 +4,7 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
-AUTHOR_NAME = "Author: Mohiadeen Shifaul Kareem MI"  # <<<--- EDIT THIS TO YOUR NAME
+AUTHOR_NAME = "Author: Mohiadeen Shifaul Kareem MI"  # <<<--- SET THIS TO YOUR NAME
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -133,7 +133,7 @@ def getch():
                 if ch == '\x13': return 'ctrl+s'
                 if ch == '\x1b': return 'esc'
                 if ch == '\x03': return 'ctrl+c'
-                if ch == '\r': return '\n'
+                if ch in ('\r', '\n'): return '\n'  # Accept both for Enter!
                 if ch in ('\x00','\xe0'):
                     k = msvcrt.getwch()
                     if k in 'HPMK': return {'H':'up','P':'down','K':'left','M':'right'}[k]
@@ -152,6 +152,7 @@ def getch():
                 tty.setraw(fd)
                 ch = sys.stdin.read(1)
                 if ch == '\x13': return 'ctrl+s'
+                if ch in ('\r','\n'): return '\n'  # Accept both!
                 if ch == '\x1b':
                     seq = sys.stdin.read(2)
                     return {'[A':'up','[B':'down','[C':'right','[D':'left'}.get(seq,'')
@@ -167,7 +168,6 @@ getkey = getch()
 
 def render(lines, line_idx, pos):
     clear_screen()
-    # Banner/author are NOT shown here!
     for i, l in enumerate(lines):
         pfx = Fore.MAGENTA+">"+Style.RESET_ALL if i == line_idx else " "
         colored = syntax_highlight(l)
@@ -221,7 +221,7 @@ def main():
     if not filename.endswith('.py'):
         print(Fore.RED+"Only .py files supported."+Style.RESET_ALL); return
     folder = choose_save_folder()
-    clear_screen()  # Clear everything (banner/author gone)
+    clear_screen()
     fullpath = os.path.join(folder, filename)
     if act == "2":
         try:
