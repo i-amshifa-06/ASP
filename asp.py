@@ -177,7 +177,7 @@ def render(lines, line_idx, pos):
             sys.stdout.write(f"{pfx} {before}|{after}\n")
         else:
             sys.stdout.write(f"{pfx} {colored}\n")
-    print(Fore.CYAN + "\n[↑/↓: move | ←/→: char | Space/Enter: autocorrect | Ctrl+S: save | ESC: quit]" + Style.RESET_ALL)
+    #print(Fore.CYAN + "\n[↑/↓: move | ←/→: char | Space/Enter: autocorrect | Ctrl+S: save | ESC: quit]" + Style.RESET_ALL)
 
 def current_word(buf, pos):
     if not buf: return pos, pos, ""
