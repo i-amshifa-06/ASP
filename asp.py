@@ -244,7 +244,7 @@ def main():
                 with open(fullpath, "w", encoding="utf-8") as fw:
                     for l in lines: fw.write(l + "\n")
                 clear_screen()
-                print(Fore.GREEN+f"Code saved to: {fullpath}"+Style.RESET_ALL)
+                print(Fore.CYAN+Style.BRIGHT+f"Code saved to: {fullpath}"+Style.RESET_ALL)
                 sys.exit(0)
             elif ch in ('esc', 'ctrl+c'):
                 clear_screen()
