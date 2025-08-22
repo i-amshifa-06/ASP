@@ -1,4 +1,4 @@
-import sys, os, difflib, re, string
+import sys, os, difflib, re, string, time
 from pyfiglet import Figlet
 from colorama import init, Fore, Style
 
@@ -81,10 +81,10 @@ HIGHLIGHT_MAP = {
 
 def syntax_highlight(line):
     def kw_color(w):
-        if w in ("def",): return HIGHLIGHT_MAP["def"]
-        if w in ("import",): return HIGHLIGHT_MAP["import"]
-        if w in ("from",): return HIGHLIGHT_MAP["from"]
-        if w in ("class",): return HIGHLIGHT_MAP["class"]
+        if w == "def": return HIGHLIGHT_MAP["def"]
+        if w == "import": return HIGHLIGHT_MAP["import"]
+        if w == "from": return HIGHLIGHT_MAP["from"]
+        if w == "class": return HIGHLIGHT_MAP["class"]
         if w in PY_KEYWORDS: return HIGHLIGHT_MAP["keyword"]
         if w in PY_BUILTINS: return HIGHLIGHT_MAP["builtin"]
         if w in PY_LIBRARIES: return HIGHLIGHT_MAP["library"]
@@ -129,21 +129,7 @@ def getch():
     try:
         import msvcrt
         def win_getch():
-            while True:
-                ch = msvcrt.getwch()
-                if ch == '\x13': return 'ctrl+s'
-                if ch == '\x16': return 'ctrl+v'  # Ctrl+V paste mode
-                if ch == '\x1b': return 'esc'
-                if ch == '\x03': return 'ctrl+c'
-                if ch in ('\r', '\n'): return '\n'
-                if ch in ('\x00','\xe0'):
-                    k = msvcrt.getwch()
-                    if k in 'HPMK': return {'H':'up','P':'down','K':'left','M':'right'}[k]
-                    else: continue
-                if ch in ('\x08', '\x7f', '\b'):
-                    return 'backspace'
-                if ch.isprintable():
-                    return ch
+            return msvcrt.getwch()
         return win_getch
     except ImportError:
         import tty, termios
@@ -152,35 +138,11 @@ def getch():
             old = termios.tcgetattr(fd)
             try:
                 tty.setraw(fd)
-                ch = sys.stdin.read(1)
-                if ch == '\x13': return 'ctrl+s'
-                if ch == '\x16': return 'ctrl+v'  # Ctrl+V paste mode
-                if ch in ('\r','\n'): return '\n'
-                if ch == '\x1b':
-                    seq = sys.stdin.read(2)
-                    return {'[A':'up','[B':'down','[C':'right','[D':'left'}.get(seq,'')
-                if ch == '\x03': return 'ctrl+c'
-                if ch in ('\x08', '\x7f', '\b'):
-                    return 'backspace'
-                if ch.isprintable():
-                    return ch
+                return sys.stdin.read(1)
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old)
         return unix_getch
 getkey = getch()
-
-def paste_block():
-    print(Fore.LIGHTYELLOW_EX + "\nPaste your code block. End with a single line: EOF" + Style.RESET_ALL)
-    block = []
-    while True:
-        try:
-            line = input()
-            if line.strip() == "EOF":
-                break
-            block.append(line)
-        except EOFError:
-            break
-    return block
 
 def render(lines, cur, pos, winlen=24):
     n = len(lines)
@@ -197,7 +159,7 @@ def render(lines, cur, pos, winlen=24):
             sys.stdout.write(f"{pfx}{str(i+1).rjust(4)} {before}|{after}\n")
         else:
             sys.stdout.write(f"{pfx}{str(i+1).rjust(4)} {colored}\n")
-    print(Fore.CYAN + f"\n[Lines {top+1}-{bottom} of {n} | Ctrl+V=Paste-Block]  ↑/↓: move  ←/→: char  Space/Enter: autocorrect  Ctrl+S: save  ESC: quit" + Style.RESET_ALL)
+    print(Fore.CYAN + f"\n[Ctrl+S=Save | Ctrl+C/ESC=Exit | Paste any code block!]  ↑/↓: move  ←/→: char  Space/Enter: autocorrect" + Style.RESET_ALL)
 
 def current_word(buf, pos):
     if not buf: return pos, pos, ""
@@ -232,6 +194,27 @@ def insert_pair(char, buf, pos):
     close = PAIRS[char]
     return buf[:pos] + char + close + buf[pos:], pos + 1
 
+def readburst(timeout=0.01):
+    # reads a whole burst of input—works on most real terminals!
+    buf, last = [], time.time()
+    while True:
+        ch = getkey()  # always a str (Windows or Unix)
+        t1 = time.time()
+        buf.append(ch)
+        # Stop if slow (user-typed), or if ESC/cmd key
+        if len(buf) > 1 and (t1 - last > timeout):
+            break
+        if ch in ('\x1b', '\x03', '\x13'):
+            break
+        # break when waiting between characters (likely user stopped, not pasting)
+        last = t1
+        # If we see an "Enter" on first char, break
+        if ch in ('\r', '\n'): break
+        # If not enough chars to treat as a paste, continue
+        if len(buf) > 500:  # hard safety cap
+            break
+    return buf
+
 def main():
     clear_screen()
     print_title_half_color("AutoSyntaxPy", AUTHOR_NAME)
@@ -258,35 +241,58 @@ def main():
     try:
         while True:
             render(lines, cur, pos)
-            ch = getkey()
+            # Burst-input paste detection
+            burst_chars = []
+            char = getkey()
+            # Windows/Unix: use time-based burst
+            if char.isprintable() and ord(char) >= 32:
+                burst_chars = [char]
+                # Try to see if a burst (paste) is happening
+                t0 = time.time()
+                while True:
+                    if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:  # only for Unix!
+                        nchar = sys.stdin.read(1)
+                        if not nchar: break
+                        burst_chars.append(nchar)
+                        if time.time() - t0 > 0.05:
+                            break
+                    else:
+                        break
+            else:
+                burst_chars = [char]
+            if len(burst_chars) > 8 or ("\n" in burst_chars and len(burst_chars) > 1):
+                # It's a paste!
+                pasted = ''.join(burst_chars)
+                pasted_lines = pasted.replace('\r','').split('\n')
+                lines[cur] = lines[cur][:pos] + pasted_lines
+                for addline in pasted_lines[1:]:
+                    cur += 1
+                    pos = 0
+                    lines.insert(cur, addline)
+                pos = len(lines[cur])
+                continue
+            ch = burst_chars
             buf = lines[cur]
-            if ch == 'ctrl+s':
+            if ch == '\x13':
                 with open(fullpath, "w", encoding="utf-8") as fw:
                     for l in lines: fw.write(l + "\n")
                 clear_screen()
                 print(Fore.CYAN+Style.BRIGHT+f"Code saved to: {fullpath}"+Style.RESET_ALL)
                 sys.exit(0)
-            elif ch == 'ctrl+v':
-                paste = paste_block()
-                for i, pline in enumerate(paste):
-                    # Insert above current line for first, then after, then after...
-                    lines.insert(cur+i+1, pline)
-                cur += len(paste)
-                pos = len(lines[cur]) if lines[cur] else 0
-            elif ch in ('esc', 'ctrl+c'):
+            elif ch in ('\x1b', '\x03'):
                 clear_screen()
                 print(Fore.RED+"Exited (not saved)"+Style.RESET_ALL)
                 sys.exit(0)
-            elif ch == 'up':
+            elif ch in ('H', 'A'):  # up
                 if cur > 0: cur -= 1; pos = min(pos, len(lines[cur]))
-            elif ch == 'down':
+            elif ch in ('P', 'B'):  # down
                 if cur < len(lines) - 1:
                     cur += 1; pos = min(pos, len(lines[cur]))
                 elif lines[-1] != "":
                     lines.append(""); cur += 1; pos = 0
-            elif ch == 'left': pos = max(0, pos - 1)
-            elif ch == 'right': pos = min(len(lines[cur]), pos + 1)
-            elif ch == 'backspace':
+            elif ch in ('K',): pos = max(0, pos - 1)  # left
+            elif ch in ('M',): pos = min(len(lines[cur]), pos + 1)  # right
+            elif ch in ('\x08', '\x7f', '\b'):
                 if pos > 0:
                     lines[cur] = buf[:pos - 1] + buf[pos:]
                     pos -= 1
@@ -307,7 +313,7 @@ def main():
                 buf = lines[cur]
                 lines[cur] = buf[:pos] + ' ' + buf[pos:]
                 pos += 1
-            elif ch == '\n':
+            elif ch in ('\r', '\n'):
                 s, e, w = current_word(buf, pos)
                 if w:
                     fixed = autocorrect_word(w, ALL_WORDS, PY_ALIAS)
