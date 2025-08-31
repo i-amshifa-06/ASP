@@ -4,7 +4,7 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
-AUTHOR_NAME = "TEAM MEMBERS: Mythili | Swathi | Haziqa | Hafiza | Salma |"  # <<<--- SET THIS TO YOUR NAME
+AUTHOR_NAME = "TEAM MEMBERS: Mythili | Swathi | Hafiza | Haziqa | Salma |"
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -78,6 +78,7 @@ HIGHLIGHT_MAP = {
     "class": Fore.RED + Style.BRIGHT,
     "reset": Style.RESET_ALL
 }
+
 def syntax_highlight(line):
     def kw_color(w):
         if w in ("def",): return HIGHLIGHT_MAP["def"]
@@ -133,7 +134,7 @@ def getch():
                 if ch == '\x13': return 'ctrl+s'
                 if ch == '\x1b': return 'esc'
                 if ch == '\x03': return 'ctrl+c'
-                if ch in ('\r', '\n'): return '\n'  # Accept both for Enter!
+                if ch in ('\r', '\n'): return '\n'
                 if ch in ('\x00','\xe0'):
                     k = msvcrt.getwch()
                     if k in 'HPMK': return {'H':'up','P':'down','K':'left','M':'right'}[k]
@@ -152,7 +153,7 @@ def getch():
                 tty.setraw(fd)
                 ch = sys.stdin.read(1)
                 if ch == '\x13': return 'ctrl+s'
-                if ch in ('\r','\n'): return '\n'  # Accept both!
+                if ch in ('\r','\n'): return '\n'
                 if ch == '\x1b':
                     seq = sys.stdin.read(2)
                     return {'[A':'up','[B':'down','[C':'right','[D':'left'}.get(seq,'')
@@ -166,18 +167,24 @@ def getch():
         return unix_getch
 getkey = getch()
 
-def render(lines, line_idx, pos):
+def render(lines, cur, pos, winlen=24):
+    # Show max winlen lines, always around current line
+    n = len(lines)
+    # Center current line in window, or stick at start/end as needed
+    top = max(0, min(cur - winlen // 2, max(0, n - winlen)))
+    bottom = min(top + winlen, n)
     clear_screen()
-    for i, l in enumerate(lines):
-        pfx = Fore.MAGENTA+">"+Style.RESET_ALL if i == line_idx else " "
+    for i in range(top, bottom):
+        l = lines[i]
+        pfx = Fore.MAGENTA+">"+Style.RESET_ALL if i == cur else " "
         colored = syntax_highlight(l)
-        if i == line_idx:
+        if i == cur:
             before = syntax_highlight(l[:pos])
             after = syntax_highlight(l[pos:])
-            sys.stdout.write(f"{pfx} {before}|{after}\n")
+            sys.stdout.write(f"{pfx}{str(i+1).rjust(4)} {before}|{after}\n")
         else:
-            sys.stdout.write(f"{pfx} {colored}\n")
-    #print(Fore.CYAN + "\n[↑/↓: move | ←/→: char | Space/Enter: autocorrect | Ctrl+S: save | ESC: quit]" + Style.RESET_ALL)
+            sys.stdout.write(f"{pfx}{str(i+1).rjust(4)} {colored}\n")
+    print(Fore.CYAN + f"\n[Lines {top+1}-{bottom} of {n}]  ↑/↓: move  ←/→: char  Space/Enter: autocorrect  Ctrl+S: save  ESC: quit" + Style.RESET_ALL)
 
 def current_word(buf, pos):
     if not buf: return pos, pos, ""
