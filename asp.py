@@ -4,7 +4,7 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
-AUTHOR_NAME = "Author: Mohiadeen Shifaul Kareem MI"  # <<<--- SET THIS TO YOUR NAME
+AUTHOR_NAME = "TEAM MEMBERS: Mythili | Swathi | Haziqa | Hafiza | Salma |"  # <<<--- SET THIS TO YOUR NAME
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
